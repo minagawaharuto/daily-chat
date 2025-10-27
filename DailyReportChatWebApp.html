@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>日報チャットボット</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+    }
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 450px;
+      margin: 0 auto;
+      background-color: white;
+    }
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .chat-header h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    .message {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: flex-start;
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .message.bot {
+      justify-content: flex-start;
+    }
+    .message.user {
+      justify-content: flex-end;
+    }
+    .message-content {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .message.bot .message-content {
+      background-color: #e9ecef;
+      color: #212529;
+      border-bottom-left-radius: 4px;
+    }
+    .message.user .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-input-container {
+      display: flex;
+      padding: 15px;
+      background-color: white;
+      border-top: 1px solid #e0e0e0;
+      box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+    }
+    #userMessage {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #dee2e6;
+      border-radius: 24px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #userMessage:focus {
+      border-color: #667eea;
+    }
+    #sendButton {
+      margin-left: 10px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #sendButton:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    #sendButton:active {
+      transform: translateY(0);
+    }
+    #sendButton:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .typing-indicator {
+      display: none;
+      padding: 10px 16px;
+      background-color: #e9ecef;
+      border-radius: 18px;
+      border-bottom-left-radius: 4px;
+      max-width: 60px;
+    }
+    .typing-indicator.active {
+      display: inline-block;
+    }
+    .typing-indicator span {
+      height: 8px;
+      width: 8px;
+      background-color: #6c757d;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+      animation: typing 1.4s infinite;
+    }
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+      margin-right: 0;
+    }
+    @keyframes typing {
+      0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+      }
+      30% {
+        transform: translateY(-10px);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h2>日報チャットボット</h2>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot">
+        <div class="message-content">
+          お名前を教えてください。
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-container">
+      <input
+        type="text"
+        id="userMessage"
+        placeholder="メッセージを入力..."
+        autocomplete="off"
+      />
+      <button id="sendButton" onclick="sendMessage()">送信</button>
+    </div>
+  </div>
+
+  <script>
+    // Enterキーで送信
+    document.getElementById('userMessage').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // ページ読み込み時にフォーカス
+    window.onload = function() {
+      document.getElementById('userMessage').focus();
+    };
+
+    // メッセージ送信処理
+    function sendMessage() {
+      const userInput = document.getElementById('userMessage').value.trim();
+
+      if (userInput === '') {
+        return;
+      }
+
+      // ユーザーメッセージを表示
+      addMessage(userInput, 'user');
+
+      // 入力欄をクリア
+      document.getElementById('userMessage').value = '';
+
+      // 送信ボタンを無効化
+      document.getElementById('sendButton').disabled = true;
+
+      // タイピングインジケーターを表示
+      showTypingIndicator();
+
+      // サーバー側にメッセージを送信
+      google.script.run
+        .withSuccessHandler(function(response) {
+          // タイピングインジケーターを非表示
+          hideTypingIndicator();
+
+          // ボットの応答を表示
+          addMessage(response, 'bot');
+
+          // 送信ボタンを再度有効化
+          document.getElementById('sendButton').disabled = false;
+
+          // フォーカスを戻す
+          document.getElementById('userMessage').focus();
+        })
+        .withFailureHandler(function(error) {
+          // タイピングインジケーターを非表示
+          hideTypingIndicator();
+
+          // エラーメッセージを表示
+          addMessage('エラーが発生しました: ' + error.message, 'bot');
+
+          // 送信ボタンを再度有効化
+          document.getElementById('sendButton').disabled = false;
+        })
+        .processDailyReportMessage(userInput);
+    }
+
+    // メッセージを追加する
+    function addMessage(text, sender) {
+      const messagesDiv = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message ' + sender;
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      contentDiv.textContent = text;
+
+      messageDiv.appendChild(contentDiv);
+      messagesDiv.appendChild(messageDiv);
+
+      // スクロールを最下部に
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // タイピングインジケーターを表示
+    function showTypingIndicator() {
+      const messagesDiv = document.getElementById('chatMessages');
+      const indicatorDiv = document.createElement('div');
+      indicatorDiv.className = 'message bot';
+      indicatorDiv.id = 'typingIndicator';
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'typing-indicator active';
+      contentDiv.innerHTML = '<span></span><span></span><span></span>';
+
+      indicatorDiv.appendChild(contentDiv);
+      messagesDiv.appendChild(indicatorDiv);
+
+      // スクロールを最下部に
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // タイピングインジケーターを非表示
+    function hideTypingIndicator() {
+      const indicator = document.getElementById('typingIndicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+  </script>
+</body>
+</html>
