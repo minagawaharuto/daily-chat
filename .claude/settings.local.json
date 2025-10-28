@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nOptimize chat UI for mobile devices with larger fonts\n\n- Add mobile-responsive viewport meta tag\n- Increase font sizes across all elements (24px for messages, input, and button)\n- Enhance touch-friendly UI with larger input/button heights (64px)\n- Add responsive media queries for tablets (768px) and small phones (375px)\n- Improve readability with better line-height and padding\n- Enable smooth scrolling on iOS with -webkit-overflow-scrolling\n- Expand chat container to full width on mobile devices\n- Add dynamic AI responses based on user''s final comment content\n- Integrate ChatGPT API for conversational daily report collection\n- Implement Slack notifications with webhook integration\n- Store conversation Q&A pairs in spreadsheet (up to 20 pairs)\n- Format spreadsheet with colors, borders, and optimal column widths\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
