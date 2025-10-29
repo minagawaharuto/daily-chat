@@ -34,19 +34,20 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 
 **会話の流れ：**
 1. 最初に「お名前を教えてください😊」と聞く
-2. 名前を聞いたら「チーム名を教えてください😊」と聞く
-3. チーム名を聞いたら「今日は何をしましたか？」と聞いて、今日の1日を振り返ってもらう
-4. 「今日やったこと」について聞く（最大3つまで）
+2. 名前を聞いたら「SlackのユーザーIDを教えてください😊（例: U01234ABCDE）」と聞く
+3. SlackユーザーIDを聞いたら「チーム名を教えてください😊」と聞く
+4. チーム名を聞いたら「今日は何をしましたか？」と聞いて、今日の1日を振り返ってもらう
+5. 「今日やったこと」について聞く（最大3つまで）
    - 1つ目のことを聞く
    - そのことについて2〜3回深掘りする（「どんな感じだった？」「楽しかった？」など）
    - 「他に何かやったことはある？」と聞く
    - あれば2つ目も同じように深掘りする
    - 最大3つまで聞く
    - 「ない」と言われたら次へ
-5. 「これからやること」を最大3回聞く
+6. 「これからやること」を最大3回聞く
    - 「ない」と言われたらスキップ
-6. 最後に「最後に一言お願いします！」と締める
-7. **最後の一言をもらったら、その場で即座に励ましメッセージとJSONを1つの応答で返す（追加の確認やラリーは不要）**
+7. 最後に「最後に一言お願いします！」と締める
+8. **最後の一言をもらったら、その場で即座に励ましメッセージとJSONを1つの応答で返す（追加の確認やラリーは不要）**
 
 **質問のスタイル：**
 - 中学生にも分かる簡単な言葉を使う
@@ -60,9 +61,12 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 - 「お名前を教えてください😊」
 
 **2番目の質問例：**
-- 「チーム名を教えてください😊」
+- 「SlackのユーザーIDを教えてください😊（例: U01234ABCDE）」
 
 **3番目の質問例：**
+- 「チーム名を教えてください😊」
+
+**4番目の質問例：**
 - 「○○さん、今日は何をしましたか？😊」
 - 「○○さん、今日の1日はどうでしたか？」
 - 「○○さん、今日はどんなことがありましたか？」
@@ -85,7 +89,8 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 
 **データ収集ルール：**
 - 最初に必ず名前を聞く
-- 次に必ずチーム名を聞く
+- 次に必ずSlackユーザーIDを聞く
+- その次に必ずチーム名を聞く
 - チーム名を聞いた後、今日の1日全体について聞く
 - やったことは最大3つまで聞く
 - 各やったことについて2〜3回深掘りする
@@ -104,6 +109,7 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 {
   "completed": true,
   "name": "名前",
+  "slackUserId": "SlackユーザーID",
   "teamName": "チーム名",
   "whatDid": ["やったこと1", "やったこと2", "やったこと3"],
   "whatTodo": ["これからやること1", "これからやること2", "これからやること3"],
@@ -485,8 +491,8 @@ function saveDailyReportFromChatGPT(reportData) {
 
     if (!sheet) {
       sheet = ss.insertSheet('日報');
-      // ヘッダー行を設定（D列にSlack表示内容、E列にチーム名、F列以降にQ&Aペア：最大20個）
-      const headers = ['日付', '時刻', '名前', 'Slack表示内容', 'チーム名'];
+      // ヘッダー行を設定（D列にSlack表示内容、E列にチーム名、F列にSlackユーザーID、G列以降にQ&Aペア：最大20個）
+      const headers = ['日付', '時刻', '名前', 'Slack表示内容', 'チーム名', 'SlackユーザーID'];
       for (let i = 1; i <= 20; i++) {
         headers.push(`Q&A${i}`);
       }
@@ -509,7 +515,8 @@ function saveDailyReportFromChatGPT(reportData) {
       sheet.setColumnWidth(3, 120);  // 名前
       sheet.setColumnWidth(4, 350);  // Slack表示内容
       sheet.setColumnWidth(5, 120);  // チーム名
-      for (let i = 6; i <= 25; i++) {
+      sheet.setColumnWidth(6, 130);  // SlackユーザーID
+      for (let i = 7; i <= 26; i++) {
         sheet.setColumnWidth(i, 400); // Q&A列
       }
 
@@ -530,6 +537,7 @@ function saveDailyReportFromChatGPT(reportData) {
     const timeStr = Utilities.formatDate(now, 'JST', 'HH:mm:ss');
     const name = reportData.name || '';
     const teamName = reportData.teamName || '';
+    const slackUserId = reportData.slackUserId || '';
 
     // Slack表示用の内容を作成
     const slackContent = createSlackContent(reportData);
@@ -563,7 +571,8 @@ function saveDailyReportFromChatGPT(reportData) {
       timeStr,
       name,
       slackContent,
-      teamName
+      teamName,
+      slackUserId
     ];
 
     // Q&Aペアを追加（最大20個）
@@ -584,21 +593,21 @@ function saveDailyReportFromChatGPT(reportData) {
     // 行の高さを自動調整（最低100px）
     sheet.setRowHeight(lastRow, 100);
 
-    // 日付・時刻・名前・チーム名は中央揃え
-    const dateTimeNameTeamRange = sheet.getRange(lastRow, 1, 1, 3);
-    dateTimeNameTeamRange.setHorizontalAlignment('center');
-    dateTimeNameTeamRange.setVerticalAlignment('middle');
+    // 日付・時刻・名前は中央揃え
+    const dateTimeNameRange = sheet.getRange(lastRow, 1, 1, 3);
+    dateTimeNameRange.setHorizontalAlignment('center');
+    dateTimeNameRange.setVerticalAlignment('middle');
 
-    // チーム名も中央揃え
-    const teamNameRange = sheet.getRange(lastRow, 5, 1, 1);
-    teamNameRange.setHorizontalAlignment('center');
-    teamNameRange.setVerticalAlignment('middle');
+    // チーム名とSlackユーザーIDも中央揃え
+    const teamUserIdRange = sheet.getRange(lastRow, 5, 1, 2);
+    teamUserIdRange.setHorizontalAlignment('center');
+    teamUserIdRange.setVerticalAlignment('middle');
 
     // Slack表示内容とQ&Aは左揃え
     const slackContentRange = sheet.getRange(lastRow, 4, 1, 1);
     slackContentRange.setHorizontalAlignment('left');
 
-    const qaRange = sheet.getRange(lastRow, 6, 1, rowData.length - 5);
+    const qaRange = sheet.getRange(lastRow, 7, 1, rowData.length - 6);
     qaRange.setHorizontalAlignment('left');
 
     // 枠線を追加
@@ -614,7 +623,7 @@ function saveDailyReportFromChatGPT(reportData) {
 
     // Slack通知を送信
     if (ENABLE_SLACK_NOTIFICATION) {
-      sendSlackNotification(name, reportData);
+      sendSlackNotification(name, slackUserId, reportData);
     }
 
     return { success: true };
@@ -705,9 +714,10 @@ function saveDailyReport(reportData) {
 /**
  * Slackに通知を送信する
  * @param {string} name ユーザー名
+ * @param {string} slackUserId SlackユーザーID
  * @param {object} reportData 日報データ
  */
-function sendSlackNotification(name, reportData) {
+function sendSlackNotification(name, slackUserId, reportData) {
   try {
     if (!ENABLE_SLACK_NOTIFICATION || SLACK_WEBHOOK_URL === 'YOUR_SLACK_WEBHOOK_URL_HERE') {
       Logger.log('Slack通知がスキップされました（無効または未設定）');
@@ -737,14 +747,21 @@ function sendSlackNotification(name, reportData) {
     const finalComment = reportData.finalComment || 'なし';
 
     const message = {
-      text: `📝 @${name}さんから日報が提出されました`,
+      text: `📝 <@${slackUserId}>さんから日報が提出されました`,
       blocks: [
         {
           type: 'header',
           text: {
             type: 'plain_text',
-            text: `📝 @${name}`,
+            text: `📝 ${name}`,
             emoji: true
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `<@${slackUserId}>さんから日報が提出されました`
           }
         },
         {
@@ -753,6 +770,10 @@ function sendSlackNotification(name, reportData) {
             {
               type: 'mrkdwn',
               text: `*日時*\n${dateStr}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*チーム*\n${teamName}`
             }
           ]
         },
