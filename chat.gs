@@ -709,7 +709,6 @@ function sendSlackNotification(name, reportData) {
 
     const now = new Date();
     const dateStr = Utilities.formatDate(now, 'JST', 'yyyy-MM-dd HH:mm');
-    const teamName = reportData.teamName || '';
 
     // やった
     let whatDidText = '';
@@ -747,10 +746,6 @@ function sendSlackNotification(name, reportData) {
             {
               type: 'mrkdwn',
               text: `*日時*\n${dateStr}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*チーム*\n${teamName}`
             }
           ]
         },
