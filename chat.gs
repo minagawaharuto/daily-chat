@@ -10,6 +10,9 @@
 // 保存先スプレッドシートID
 const SPREADSHEET_ID = '1CKngse7DuGj_vTaRc5l6lPNIWPyqpg-tFCdXbHgtaII';
 
+// 利用者管理スプレッドシートID
+const USER_MANAGEMENT_SPREADSHEET_ID = '1ZywFkQ3_UbclT9W0LKlkHj7zCX7Tp98iYuA7ozZy4qM';
+
 // OpenAI APIキー（ChatGPT版を使う場合に設定）
 const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE';
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -34,20 +37,19 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 
 **会話の流れ：**
 1. 最初に「お名前を教えてください😊」と聞く
-2. 名前を聞いたら「SlackのユーザーIDを教えてください😊（例: U01234ABCDE）」と聞く
-3. SlackユーザーIDを聞いたら「チーム名を教えてください😊」と聞く
-4. チーム名を聞いたら「今日は何をしましたか？」と聞いて、今日の1日を振り返ってもらう
-5. 「今日やったこと」について聞く（最大3つまで）
+2. 名前を聞いたら「チーム名を教えてください😊」と聞く
+3. チーム名を聞いたら「今日は何をしましたか？」と聞いて、今日の1日を振り返ってもらう
+4. 「今日やったこと」について聞く（最大3つまで）
    - 1つ目のことを聞く
    - そのことについて2〜3回深掘りする（「どんな感じだった？」「楽しかった？」など）
    - 「他に何かやったことはある？」と聞く
    - あれば2つ目も同じように深掘りする
    - 最大3つまで聞く
    - 「ない」と言われたら次へ
-6. 「これからやること」を最大3回聞く
+5. 「これからやること」を最大3回聞く
    - 「ない」と言われたらスキップ
-7. 最後に「最後に一言お願いします！」と締める
-8. **最後の一言をもらったら、その場で即座に励ましメッセージとJSONを1つの応答で返す（追加の確認やラリーは不要）**
+6. 最後に「最後に一言お願いします！」と締める
+7. **最後の一言をもらったら、その場で即座に励ましメッセージとJSONを1つの応答で返す（追加の確認やラリーは不要）**
 
 **質問のスタイル：**
 - 中学生にも分かる簡単な言葉を使う
@@ -61,12 +63,9 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 - 「お名前を教えてください😊」
 
 **2番目の質問例：**
-- 「SlackのユーザーIDを教えてください😊（例: U01234ABCDE）」
-
-**3番目の質問例：**
 - 「チーム名を教えてください😊」
 
-**4番目の質問例：**
+**3番目の質問例：**
 - 「○○さん、今日は何をしましたか？😊」
 - 「○○さん、今日の1日はどうでしたか？」
 - 「○○さん、今日はどんなことがありましたか？」
@@ -89,8 +88,7 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 
 **データ収集ルール：**
 - 最初に必ず名前を聞く
-- 次に必ずSlackユーザーIDを聞く
-- その次に必ずチーム名を聞く
+- 次に必ずチーム名を聞く
 - チーム名を聞いた後、今日の1日全体について聞く
 - やったことは最大3つまで聞く
 - 各やったことについて2〜3回深掘りする
@@ -109,7 +107,6 @@ const SYSTEM_PROMPT = `あなたは優しくて話しやすい日報収集アシ
 {
   "completed": true,
   "name": "名前",
-  "slackUserId": "SlackユーザーID",
   "teamName": "チーム名",
   "whatDid": ["やったこと1", "やったこと2", "やったこと3"],
   "whatTodo": ["これからやること1", "これからやること2", "これからやること3"],
@@ -492,7 +489,7 @@ function saveDailyReportFromChatGPT(reportData) {
     if (!sheet) {
       sheet = ss.insertSheet('日報');
       // ヘッダー行を設定（D列にSlack表示内容、E列にチーム名、F列にSlackユーザーID、G列以降にQ&Aペア：最大20個）
-      const headers = ['日付', '時刻', '名前', 'Slack表示内容', 'チーム名', 'SlackユーザーID'];
+      const headers = ['日付', '時刻', '登録番号', 'Slack表示内容', 'チーム名', 'SlackユーザーID'];
       for (let i = 1; i <= 20; i++) {
         headers.push(`Q&A${i}`);
       }
@@ -512,7 +509,7 @@ function saveDailyReportFromChatGPT(reportData) {
       // 列幅を調整
       sheet.setColumnWidth(1, 110);  // 日付
       sheet.setColumnWidth(2, 90);   // 時刻
-      sheet.setColumnWidth(3, 120);  // 名前
+      sheet.setColumnWidth(3, 100);  // 登録番号
       sheet.setColumnWidth(4, 350);  // Slack表示内容
       sheet.setColumnWidth(5, 120);  // チーム名
       sheet.setColumnWidth(6, 130);  // SlackユーザーID
@@ -537,7 +534,11 @@ function saveDailyReportFromChatGPT(reportData) {
     const timeStr = Utilities.formatDate(now, 'JST', 'HH:mm:ss');
     const name = reportData.name || '';
     const teamName = reportData.teamName || '';
-    const slackUserId = reportData.slackUserId || '';
+
+    // 利用者管理スプレッドシートからユーザー情報を取得
+    const userInfo = getUserInfoByName(name);
+    const registrationNumber = userInfo ? userInfo.registrationNumber : '';
+    const slackUserId = userInfo ? userInfo.slackUserId : '';
 
     // Slack表示用の内容を作成
     const slackContent = createSlackContent(reportData);
@@ -569,7 +570,7 @@ function saveDailyReportFromChatGPT(reportData) {
     const rowData = [
       dateStr,
       timeStr,
-      name,
+      registrationNumber,
       slackContent,
       teamName,
       slackUserId
@@ -593,10 +594,10 @@ function saveDailyReportFromChatGPT(reportData) {
     // 行の高さを自動調整（最低100px）
     sheet.setRowHeight(lastRow, 100);
 
-    // 日付・時刻・名前は中央揃え
-    const dateTimeNameRange = sheet.getRange(lastRow, 1, 1, 3);
-    dateTimeNameRange.setHorizontalAlignment('center');
-    dateTimeNameRange.setVerticalAlignment('middle');
+    // 日付・時刻・登録番号は中央揃え
+    const dateTimeRegNumRange = sheet.getRange(lastRow, 1, 1, 3);
+    dateTimeRegNumRange.setHorizontalAlignment('center');
+    dateTimeRegNumRange.setVerticalAlignment('middle');
 
     // チーム名とSlackユーザーIDも中央揃え
     const teamUserIdRange = sheet.getRange(lastRow, 5, 1, 2);
@@ -822,6 +823,51 @@ function sendSlackNotification(name, slackUserId, reportData) {
 
   } catch (e) {
     Logger.log('Slack通知エラー: ' + e.toString());
+  }
+}
+
+// ========================================
+// ユーザー管理
+// ========================================
+
+/**
+ * 利用者管理スプレッドシートから名前でユーザー情報を取得
+ * @param {string} name ユーザー名
+ * @return {object} {registrationNumber: string, slackUserId: string} または null
+ */
+function getUserInfoByName(name) {
+  try {
+    const ss = SpreadsheetApp.openById(USER_MANAGEMENT_SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('利用者管理');
+
+    if (!sheet) {
+      Logger.log('利用者管理シートが見つかりません');
+      return null;
+    }
+
+    // データを取得（ヘッダー行を除く）
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
+
+    // 名前で検索
+    for (let i = 0; i < data.length; i++) {
+      const registrationNumber = data[i][0];
+      const userName = data[i][1];
+      const slackUserId = data[i][2];
+
+      if (userName === name) {
+        return {
+          registrationNumber: registrationNumber,
+          slackUserId: slackUserId
+        };
+      }
+    }
+
+    Logger.log('ユーザーが見つかりませんでした: ' + name);
+    return null;
+
+  } catch (e) {
+    Logger.log('getUserInfoByName エラー: ' + e.toString());
+    return null;
   }
 }
 
