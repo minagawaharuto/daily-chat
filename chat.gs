@@ -485,8 +485,8 @@ function saveDailyReportFromChatGPT(reportData) {
 
     if (!sheet) {
       sheet = ss.insertSheet('日報');
-      // ヘッダー行を設定（E列にSlack表示内容、F列以降にQ&Aペア：最大20個）
-      const headers = ['日付', '時刻', '名前', 'チーム名', 'Slack表示内容'];
+      // ヘッダー行を設定（D列にSlack表示内容、E列にチーム名、F列以降にQ&Aペア：最大20個）
+      const headers = ['日付', '時刻', '名前', 'Slack表示内容', 'チーム名'];
       for (let i = 1; i <= 20; i++) {
         headers.push(`Q&A${i}`);
       }
@@ -507,8 +507,8 @@ function saveDailyReportFromChatGPT(reportData) {
       sheet.setColumnWidth(1, 110);  // 日付
       sheet.setColumnWidth(2, 90);   // 時刻
       sheet.setColumnWidth(3, 120);  // 名前
-      sheet.setColumnWidth(4, 120);  // チーム名
-      sheet.setColumnWidth(5, 350);  // Slack表示内容
+      sheet.setColumnWidth(4, 350);  // Slack表示内容
+      sheet.setColumnWidth(5, 120);  // チーム名
       for (let i = 6; i <= 25; i++) {
         sheet.setColumnWidth(i, 400); // Q&A列
       }
@@ -562,8 +562,8 @@ function saveDailyReportFromChatGPT(reportData) {
       dateStr,
       timeStr,
       name,
-      teamName,
-      slackContent
+      slackContent,
+      teamName
     ];
 
     // Q&Aペアを追加（最大20個）
@@ -585,13 +585,21 @@ function saveDailyReportFromChatGPT(reportData) {
     sheet.setRowHeight(lastRow, 100);
 
     // 日付・時刻・名前・チーム名は中央揃え
-    const dateTimeNameTeamRange = sheet.getRange(lastRow, 1, 1, 4);
+    const dateTimeNameTeamRange = sheet.getRange(lastRow, 1, 1, 3);
     dateTimeNameTeamRange.setHorizontalAlignment('center');
     dateTimeNameTeamRange.setVerticalAlignment('middle');
 
+    // チーム名も中央揃え
+    const teamNameRange = sheet.getRange(lastRow, 5, 1, 1);
+    teamNameRange.setHorizontalAlignment('center');
+    teamNameRange.setVerticalAlignment('middle');
+
     // Slack表示内容とQ&Aは左揃え
-    const contentRange = sheet.getRange(lastRow, 5, 1, rowData.length - 4);
-    contentRange.setHorizontalAlignment('left');
+    const slackContentRange = sheet.getRange(lastRow, 4, 1, 1);
+    slackContentRange.setHorizontalAlignment('left');
+
+    const qaRange = sheet.getRange(lastRow, 6, 1, rowData.length - 5);
+    qaRange.setHorizontalAlignment('left');
 
     // 枠線を追加
     dataRange.setBorder(true, true, true, true, true, true, '#e0e0e0', SpreadsheetApp.BorderStyle.SOLID);
@@ -602,7 +610,6 @@ function saveDailyReportFromChatGPT(reportData) {
     }
 
     // Slack表示内容の背景色を薄い青に
-    const slackContentRange = sheet.getRange(lastRow, 5, 1, 1);
     slackContentRange.setBackground('#e3f2fd');
 
     // Slack通知を送信
